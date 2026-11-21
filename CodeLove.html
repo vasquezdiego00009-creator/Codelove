@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>CodeLove</title>
+<style>
+:root{--bg:#fff7fa;--card:#fff;--tx:#2a1b25;--mut:#7d6674;--ac:#e11d74;--ac2:#7c3aed;--bd:#f0d9e4;--ok:#0f9d58;--gold:#d99a00;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#150d14;--card:#211520;--tx:#f7e9f1;--mut:#b497a9;--bd:#3a2536;--gold:#f5b82e}}
+:root[data-theme="dark"]{--bg:#150d14;--card:#211520;--tx:#f7e9f1;--mut:#b497a9;--bd:#3a2536;--gold:#f5b82e}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--tx);font:16px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+header{padding:28px 18px 8px;text-align:center}
+.logo{font-size:34px;font-weight:800;letter-spacing:-1px;background:linear-gradient(90deg,var(--ac),var(--ac2));-webkit-background-clip:text;background-clip:text;color:transparent}
+.sub{color:var(--mut);margin:4px 0 0;font-size:14px}
+main{max-width:760px;margin:0 auto;padding:12px 16px 40px}
+.tabs{display:flex;gap:8px;margin:14px 0}
+.tab{flex:1;padding:11px;border:1px solid var(--bd);background:var(--card);color:var(--tx);border-radius:12px;font:inherit;font-weight:600;cursor:pointer}
+.tab.on{background:linear-gradient(90deg,var(--ac),var(--ac2));color:#fff;border-color:transparent}
+.grid{display:grid;gap:12px}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:16px;padding:14px}
+.card h3{margin:0 0 4px;font-size:17px}
+.card p{margin:0 0 10px;color:var(--mut);font-size:14px;overflow-wrap:anywhere}
+.badge{display:inline-block;font-size:12px;font-weight:700;padding:2px 9px;border-radius:99px;margin-bottom:6px}
+.free{background:rgba(15,157,88,.14);color:var(--ok)}
+.prem{background:rgba(217,154,0,.16);color:var(--gold)}
+.row{display:flex;gap:8px;flex-wrap:wrap}
+button.b,a.b{border:0;border-radius:10px;padding:9px 14px;font:inherit;font-weight:600;cursor:pointer;background:var(--ac);color:#fff;text-decoration:none;display:inline-block}
+button.g{background:transparent;color:var(--tx);border:1px solid var(--bd)}
+button.d{background:transparent;color:#d6293e;border:1px solid var(--bd)}
+.empty{text-align:center;color:var(--mut);padding:30px 10px}
+.panel{background:var(--card);border:1px dashed var(--ac);border-radius:16px;padding:14px;margin-bottom:14px}
+.panel h2{margin:0 0 10px;font-size:16px}
+input,textarea,select{width:100%;margin:0 0 8px;padding:10px;border:1px solid var(--bd);border-radius:10px;background:var(--bg);color:var(--tx);font:inherit}
+.modal{position:fixed;inset:0;background:var(--bg);z-index:20;display:none;flex-direction:column;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+.modal.on{display:flex}
+.bar{display:flex;gap:8px;align-items:center;padding:10px 12px;border-bottom:1px solid var(--bd)}
+.bar strong{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+iframe{flex:1;border:0;width:100%;background:#fff}
+.lock{padding:22px 18px;text-align:center}
+#toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--tx);color:var(--bg);padding:10px 16px;border-radius:99px;font-size:14px;opacity:0;pointer-events:none;transition:opacity .2s;z-index:30;max-width:90%}
+#toast.on{opacity:1}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">💜 CodeLove</div>
+  <p class="sub">Páginas HTML para ver y descargar</p>
+</header>
+<main>
+  <div id="owner"></div>
+  <div class="tabs">
+    <button class="tab on" data-t="free">Gratis</button>
+    <button class="tab" data-t="premium">⭐ Premium</button>
+  </div>
+  <div id="list" class="grid"><div class="empty">Cargando…</div></div>
+</main>
+
+<div class="modal" id="modal">
+  <div class="bar">
+    <button class="b g" id="mclose">✕</button>
+    <strong id="mtitle"></strong>
+    <button class="b" id="mdl">Descargar</button>
+  </div>
+  <iframe id="frame" sandbox="allow-scripts allow-forms allow-modals" title="Vista previa"></iframe>
+  <div class="lock" id="mlock" hidden></div>
+</div>
+<div id="toast"></div>
+
+<script>
+(function(){
+var $=function(s){return document.querySelector(s)};
+var esc=function(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})};
+var db=null,dl=null,isOwner=false,cat=[],cfg={},tab='free',loaded=false,cur=null,curHtml='';
+var MAX=240000;
+
+function toast(m){var t=$('#toast');t.textContent=m;t.classList.add('on');setTimeout(function(){t.classList.remove('on')},2600)}
+
+function renderOwner(){
+  var o=$('#owner');
+  if(!isOwner){o.innerHTML='';return}
+  if(o.dataset.ready)return;
+  o.dataset.ready='1';
+  o.innerHTML='<div class="panel"><h2>🔑 Panel del owner</h2>'+
+  '<input id="ft" placeholder="Título" maxlength="80">'+
+  '<textarea id="fd" rows="2" placeholder="Descripción corta" maxlength="200"></textarea>'+
+  '<select id="fk"><option value="free">Gratis</option><option value="premium">Premium (de paga)</option></select>'+
+  '<input id="fp" placeholder="Precio (ej. $50 MXN) — solo premium" maxlength="30">'+
+  '<input id="ff" type="file" accept=".html,.htm,text/html">'+
+  '<div class="row"><button class="b" id="fup">Subir archivo</button></div>'+
+  '<h2 style="margin-top:16px">💳 Cómo pagar (se muestra en Premium)</h2>'+
+  '<input id="cp" placeholder="Link de pago (https://…)" maxlength="300">'+
+  '<textarea id="cn" rows="2" placeholder="Instrucciones o contacto" maxlength="300"></textarea>'+
+  '<button class="b g" id="csave">Guardar datos de pago</button></div>';
+  $('#fup').onclick=upload;
+  $('#csave').onclick=saveCfg;
+  fillCfg();
+}
+function fillCfg(){
+  if(!$('#cp'))return;
+  if(document.activeElement!==$('#cp'))$('#cp').value=cfg.pay||'';
+  if(document.activeElement!==$('#cn'))$('#cn').value=cfg.note||'';
+}
+
+async function upload(){
+  var f=$('#ff').files[0],t=$('#ft').value.trim();
+  if(!db)return toast('Base de datos no disponible');
+  if(!t||!f)return toast('Pon un título y elige un archivo');
+  if(f.size>MAX)return toast('Máximo 240 KB por archivo');
+  var kind=$('#fk').value,html=await f.text();
+  var ref=db.collection('catalog').doc(),id=ref.id;
+  try{
+    await db.doc((kind==='premium'?'premium/':'free/')+id).set({html:html});
+    await ref.set({title:t,desc:$('#fd').value.trim(),tier:kind,price:$('#fp').value.trim(),filename:f.name,size:f.size,ts:Date.now()});
+    $('#ft').value='';$('#fd').value='';$('#fp').value='';$('#ff').value='';
+    toast('Archivo subido ✔');
+  }catch(e){toast('No se pudo subir: '+(e&&e.code||'error'))}
+}
+async function saveCfg(){
+  try{await db.doc('config/main').set({pay:$('#cp').value.trim(),note:$('#cn').value.trim()});toast('Guardado ✔')}
+  catch(e){toast('No se pudo guardar')}
+}
+async function remove(f){
+  if(!confirm('¿Eliminar “'+f.title+'”?'))return;
+  try{await db.doc((f.tier==='premium'?'premium/':'free/')+f.id).delete();await db.doc('catalog/'+f.id).delete();toast('Eliminado')}
+  catch(e){toast('No se pudo eliminar')}
+}
+
+function render(){
+  renderOwner();fillCfg();
+  var L=$('#list');
+  if(!db){L.innerHTML='<div class="empty">Inicia sesión en claude.ai para ver el catálogo.</div>';return}
+  if(!loaded){return}
+  var items=cat.filter(function(x){return x.tier===tab});
+  if(!items.length){L.innerHTML='<div class="empty">'+(tab==='free'?'Aún no hay archivos gratis.':'Aún no hay archivos premium.')+'</div>';return}
+  L.innerHTML=items.map(function(f){
+    var p=f.tier==='premium';
+    return '<div class="card"><span class="badge '+(p?'prem':'free')+'">'+(p?'⭐ Premium'+(f.price?' · '+esc(f.price):''):'Gratis')+'</span>'+
+    '<h3>'+esc(f.title)+'</h3><p>'+esc(f.desc)+(f.size?' <span>('+Math.max(1,Math.round(f.size/1024))+' KB)</span>':'')+'</p>'+
+    '<div class="row"><button class="b" data-a="view" data-id="'+esc(f.id)+'">Ver</button>'+
+    '<button class="b g" data-a="dl" data-id="'+esc(f.id)+'">Descargar</button>'+
+    (isOwner?'<button class="b d" data-a="del" data-id="'+esc(f.id)+'">Eliminar</button>':'')+'</div></div>';
+  }).join('');
+}
+
+async function getHtml(f){
+  var s=await db.doc((f.tier==='premium'?'premium/':'free/')+f.id).get();
+  var d=s.data();
+  if(!d||typeof d.html!=='string')throw{code:'not_granted'};
+  return d.html;
+}
+function showLock(f){
+  $('#mtitle').textContent=f.title;$('#frame').style.display='none';$('#mdl').style.display='none';
+  var pay=/^https:\/\//.test(cfg.pay||'')?'<p><a class="b" target="_blank" rel="noopener" href="'+esc(cfg.pay)+'">Pagar ahora</a></p>':'';
+  $('#mlock').innerHTML='<h2>🔒 Contenido premium</h2><p>'+esc(f.title)+(f.price?' · '+esc(f.price):'')+'</p>'+pay+
+  '<p>'+esc(cfg.note||'Pide acceso al owner para desbloquear este archivo.')+'</p>';
+  $('#mlock').hidden=false;$('#modal').classList.add('on');
+}
+async function open(f){
+  try{
+    curHtml=await getHtml(f);cur=f;
+    $('#mtitle').textContent=f.title;$('#mlock').hidden=true;
+    $('#frame').style.display='';$('#mdl').style.display='';
+    $('#frame').srcdoc=curHtml;$('#modal').classList.add('on');
+  }catch(e){
+    if(f.tier==='premium')showLock(f);else toast('No se pudo abrir')
+  }
+}
+async function download(f,html){
+  try{
+    if(html==null)html=await getHtml(f);
+    var name=(f.filename||f.title+'.html').replace(/[^\w.\- ]+/g,'_');
+    if(dl){await dl.save({filename:name,data:html});toast('Descarga lista ✔')}
+    else toast('Descarga no disponible en este visor');
+  }catch(e){
+    if(e&&e.code==='declined')return;
+    if(f.tier==='premium')showLock(f);else toast('No se pudo descargar')
+  }
+}
+
+document.addEventListener('click',function(e){
+  var t=e.target.closest('[data-t]');
+  if(t){tab=t.dataset.t;document.querySelectorAll('.tab').forEach(function(b){b.classList.toggle('on',b===t)});render();return}
+  var a=e.target.closest('[data-a]');
+  if(!a)return;
+  var f=cat.filter(function(x){return x.id===a.dataset.id})[0];
+  if(!f)return;
+  if(a.dataset.a==='view')open(f);
+  else if(a.dataset.a==='dl')download(f);
+  else if(a.dataset.a==='del')remove(f);
+});
+$('#mclose').onclick=function(){$('#modal').classList.remove('on');$('#frame').srcdoc='';curHtml='';cur=null};
+$('#mdl').onclick=function(){if(cur)download(cur,curHtml)};
+
+render();
+(async function(){
+  try{var u=await claude.use('user');isOwner=u?await u.isOwner():false}catch(e){}
+  try{dl=await claude.use('downloads')}catch(e){}
+  try{db=await claude.use('db')}catch(e){}
+  renderOwner();
+  if(!db){render();return}
+  var timer=setTimeout(function(){if(!loaded){loaded=true;render()}},10000);
+  db.collection('catalog').orderBy('ts','desc').onSnapshot(function(s){
+    clearTimeout(timer);loaded=true;
+    cat=s.docs.map(function(d){var x=d.data()||{};x.id=d.id;return x});render();
+  },function(){clearTimeout(timer);loaded=true;render()});
+  db.doc('config/main').onSnapshot(function(s){cfg=s.data()||{};fillCfg()},function(){});
+})();
+})();
+</script>
+</body>
+</html>
